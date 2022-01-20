@@ -57,7 +57,7 @@ class LoginPage:
     def open_login_form(self, refresh=True, sleep=1):
         if self.driver.current_url != self.login_page_url:
             self.driver.get(self.login_page_url)
-            time.sleep(sleep)
+            self.common.sleep(sleep)
         
         if refresh and self.login_form_visible():
             # close login form to refresh captcha
@@ -70,6 +70,7 @@ class LoginPage:
         self.driver.execute_script("""return document.getElementsByClassName("search_btn")[3].click()""")
         
         time.sleep(sleep)
+        self.common.wait_until_loaded()
         return True
     
     def close_login_form(self):
@@ -85,8 +86,8 @@ class LoginPage:
     def click_logout(self):
         if self.logged_in():
             self.driver.execute_script(f"{self.logout_button}.click()")
-            self.driver.get(self.login_page_url)
-            self.close_covid_popup()
+        self.driver.get(self.login_page_url)
+        self.close_covid_popup()
     
     def fill_id_pass(self, username, password):
         self.common.close_chatbox()
@@ -116,7 +117,11 @@ class LoginPage:
             captcha = self.driver.execute_script(f"return {self.type_here_captcha_image}")
             captcha = captcha.find_elements_by_tag_name("img")[-1]
             # captcha = Image.open(io.BytesIO(captcha.screenshot_as_png)).convert("RGB")
+            
             captcha = Image.open(io.BytesIO(requests.get(captcha.get_attribute("src")).content)).convert("RGB")
+            width, height = captcha.size
+            captcha = captcha.crop((155, 0, width, height)) # left, top, right, bottom
+
             self.captcha =  Captcha(self.driver, captcha, self.type_here_captcha, desc="type here captcha")
             return self.captcha
         
@@ -133,10 +138,9 @@ class LoginPage:
             try:
                 self.open_login_form(refresh=refresh, sleep=sleep)
                 captcha = self.identify_captcha()
-                if captcha:
-                    return captcha
+                if captcha: return captcha
             except:
-                time.sleep(sleep)
+                self.common.sleep(sleep)
                 if max_retry and idx > max_retry: break
                 idx += 1
     
@@ -145,11 +149,12 @@ class LoginPage:
         self.common.close_chatbox()
         return self.captcha.fill(text)
         
-    def click_signin(self, sleep=1):
+    def click_signin(self, sleep=.5):
         self.common.close_chatbox()
         
         self.driver.execute_script(f"return {self.signin_button}").find_elements_by_tag_name("button")[0].click()
-        time.sleep(sleep)
+        self.common.sleep(sleep)
+        self.common.wait_until_loaded()
         return self.signin_error()
     
     def signin_error(self):
@@ -157,12 +162,13 @@ class LoginPage:
             return self.driver.execute_script(f"return {self.login_error_text}.innerText")
         except: return ''
     
-    def signin(self, username, password, captcha="", sleep=0.1):
+    def signin(self, username, password, captcha="", sleep=0.2):
         self.fill_id_pass(username, password)
         try:
             time.sleep(sleep)
             self.fill_captcha(captcha)
         except AttributeError: pass
+        time.sleep(sleep)
         return self.click_signin()
     
     def handle_last_booking_incomplete_popup(self):

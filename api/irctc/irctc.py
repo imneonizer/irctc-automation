@@ -10,23 +10,16 @@ import time
 import datetime
 
 class Irctc:
-    def __init__(self, chrome=None, chromedriver="chromedriver/linux64/chromedriver", headless=False, window_size=(700, 1000)):
+    def __init__(self, chrome=None, chromedriver=None, headless=False, disable_image=False, window_size=(700, 1000)):
         self.headless = headless
+        self.disable_image = disable_image
         self.chromedriver = chromedriver
         self.window_size = window_size
-        self.chrome = chrome or self.init_chrome()
-        self.driver = self.chrome.driver
+        self.chrome = self.init_chrome()
         self.ocr = ocr
         
         if not self.chrome_reachable:
             self.chrome = self.init_chrome()
-        
-        self.chrome.driver.set_window_size(*self.window_size)
-        self.login_page = LoginPage(self.chrome.driver)
-        self.booking_page = BookingPage(self.chrome.driver)
-        self.search_page = SearchPage(self.chrome.driver, self.login_page, self.booking_page)
-        self.passenger_page = PassengerPage(self.chrome.driver, self.booking_page)
-        self.common = Common(self.chrome.driver)
         
         self.username = None
         self.password = None
@@ -38,19 +31,27 @@ class Irctc:
         options = webdriver.ChromeOptions()
         if self.headless:
             options.add_argument('--headless')
+            
+        if self.disable_image:
+            prefs = {"profile.managed_default_content_settings.images": 2}
+            options.add_experimental_option("prefs", prefs)
+        
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
-        self.driver = webdriver.Chrome('chromedriver',options=options)
+        self.driver = webdriver.Chrome('chromedriver', options=options)
+        self.driver.set_window_size(*self.window_size)
+        
+        self.login_page = LoginPage(self.driver)
+        self.booking_page = BookingPage(self.driver)
+        self.search_page = SearchPage(self.driver, self.login_page, self.booking_page)
+        self.passenger_page = PassengerPage(self.driver, self.booking_page)
+        self.common = Common(self.driver)
         
         class Chrome:
             def __init__(self, driver):
                 self.driver = driver
         
         self.chrome = Chrome(self.driver)
-        
-        # self.chrome = imchrome.init(chromedriver=self.chromedriver, headless=self.headless, load_image=True)
-        # self.driver = self.chrome.driver
-        self.chrome.driver.set_window_size(*self.window_size)
         return self.chrome
     
     @property
@@ -65,18 +66,21 @@ class Irctc:
     #         self.irctc_clock = self.chrome.driver.find_element_by_tag_name("p-sidebar").find_element_by_tag_name("strong")
     #     return datetime.datetime.strptime(self.irctc_clock.text, "%d-%b-%Y [%H:%M:%S]")
     
-    def login(self, username, password, max_retry=100, sleep=1, print_captcha=False):
+    def login(self, username, password, max_retry=100, sleep=1, print_captcha=False, refresh_page=False):
         if self.login_page.logged_in():
             return True
         
         st = time.time()
         
-        if not self.chrome_reachable:
-            self.init_chrome()
-                
+        if not self.chrome_reachable: self.init_chrome()
+        if refresh_page: self.driver.get(self.login_page.login_page_url)
+        
         idx = 0
         while True:
             if self.login_page.logged_in():
+                self.common.sleep(0.1)
+                self.login_page.handle_last_booking_incomplete_popup()
+                
                 self.username = username
                 self.password = password
                 self.login_at = time.time()
@@ -91,12 +95,11 @@ class Irctc:
             
             try:
                 self.login_page.signin(username, password, captcha)
-                self.login_page.handle_last_booking_incomplete_popup()
             except: pass
             
             if max_retry and idx >= max_retry: break
             idx +=1
-            time.sleep(sleep)
+            self.common.sleep(sleep)
         
         print(f"Unable to solve captcha after ({max_retry}) retries")
         # TODO: add logic to send captcha over telegram for the user to enter
@@ -125,10 +128,16 @@ class Irctc:
         # TODO: add logic to send captcha over telegram for the user to enter
         
     def search_train(self, details):
-        time.sleep(1)
+        self.common.sleep(1)
+        self.common.wait_until_loaded()
+        self.login_page.handle_last_booking_incomplete_popup()
         return self.search_page.search_train(details)
     
     def logout(self):
-        if self.login_page.logged_in():
-            self.login_page.click_logout()
+        self.login_page.click_logout()
         return (not self.login_page.logged_in())
+    
+    def __del__(self):
+        try:
+            self.driver.quit()
+        except: pass

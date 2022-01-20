@@ -101,7 +101,6 @@ class SearchPage:
                 self.booking_page.select_checkboxes(details.get('options', {}))
             
             self.booking_page.click_search()
-            
             self.booking_page.wait_until_loaded()
             
             if self.booking_page.error_toast:
@@ -112,7 +111,12 @@ class SearchPage:
                 return "unable to find train"
         
         elif self.booking_page.train_list_page_visible:
-            self.booking_page.go_back()
+            for i in range(6):
+                # go back multiple times
+                self.booking_page.go_back()
+                self.common.sleep(0.1)
+            
+            self.common.sleep(0.1)
             return self.search_train(details)
     
     def get_train_details(self, train_number, train_class):
@@ -168,7 +172,7 @@ class SearchPage:
             if e.text: idx += 1
         return []
     
-    def find_book_now_button(self, train_idx):        
+    def find_book_now_button(self, train_idx):
         idx = 0
         for e in self.driver.find_elements_by_tag_name("app-train-avl-enq"):
             if idx == train_idx:

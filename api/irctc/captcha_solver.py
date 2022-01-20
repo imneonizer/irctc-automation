@@ -25,9 +25,8 @@ class OCR:
             return ""
     
     def clean(self, text):
-        if "Type" in text:
-            text = text.replace("Typeintheboxbelow", "")
-            text = text.replace(":", "")
-        return text
+        text = text.replace("Typeintheboxbelow", "")
+        text = text.replace(":", "")
+        return text.strip()
 
 ocr = OCR()

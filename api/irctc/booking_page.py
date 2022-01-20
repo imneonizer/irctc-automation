@@ -18,7 +18,7 @@ class BookingPage:
     @property
     def loading(self, sleep=1):
         try:
-            time.sleep(sleep)
+            self.common.sleep(sleep)
             self.driver.find_element_by_class_name("loading-bg")
             return True
         except NoSuchElementException:
@@ -28,29 +28,31 @@ class BookingPage:
         self.common.close_chatbox()
         self.driver.find_element_by_tag_name("body").click()
     
-    def fill_origin(self, station_code, sleep=0.3):
-        self.common.close_chatbox()
+    def fill_origin(self, station_code, sleep=0.1):
         origin = self.driver.execute_script("""return document.getElementById("origin")""")
         origin = origin.find_element_by_tag_name("input")
+        self.common.close_chatbox()
+        self.common.scroll_to_element(origin)
         origin.clear()
         origin.send_keys(station_code.upper())
         time.sleep(sleep)
         origin.send_keys(Keys.ENTER)
     
-    def fill_destination(self, station_code, sleep=0.3):
-        self.common.close_chatbox()
+    def fill_destination(self, station_code, sleep=0.1):
         destination = self.driver.execute_script("""return document.getElementById("destination")""")
         destination = destination.find_element_by_tag_name("input")
+        self.common.close_chatbox()
+        self.common.scroll_to_element(destination)
         destination.clear()
         destination.send_keys(station_code.upper())
         time.sleep(sleep)
-        
         destination.send_keys(Keys.ENTER)
     
-    def fill_date(self, date_string, sleep=0.3):
+    def fill_date(self, date_string, sleep=0.1):
         # format: dd/mm/yyyy
-        self.common.close_chatbox()
         journey_date = self.driver.find_element_by_tag_name("p-calendar").find_element_by_tag_name("input")
+        self.common.close_chatbox()
+        self.common.scroll_to_element(journey_date)
         self.click_body()
         journey_date.send_keys(Keys.CONTROL, 'a')
         journey_date.send_keys(Keys.BACKSPACE)
@@ -77,15 +79,16 @@ class BookingPage:
         # Make sure dropdown menu is visible
         if "ui-dropdown-open" not in self.driver.find_element_by_id("journeyClass").find_element_by_tag_name("div").get_attribute("class"):
             self.common.close_chatbox()
-            self.driver.find_element_by_id("journeyClass").click()
-            time.sleep(sleep)
+            jc = self.driver.find_element_by_id("journeyClass")
+            self.common.click(jc)
+            self.common.sleep(sleep)
         
         # iterate through dropdown items to select journey class
         dropdown_items = self.driver.find_elements_by_tag_name("p-dropdownitem")
         for i, e in enumerate(dropdown_items):
             if f"({journey_class})" in e.text:
                 self.common.close_chatbox()
-                e.click()
+                self.common.click(e)
     
     def fill_quota(self, journey_quota, sleep=0.03):
         # GENERAL
@@ -100,15 +103,16 @@ class BookingPage:
         # Make sure dropdown menu is visible
         if "ui-dropdown-open" not in self.driver.find_element_by_id("journeyQuota").find_element_by_tag_name("div").get_attribute("class"):
             self.common.close_chatbox()
-            self.driver.find_element_by_id("journeyQuota").click()
-            time.sleep(sleep)
+            jq = self.driver.find_element_by_id("journeyQuota")
+            self.common.click(jq)
+            self.common.sleep(sleep)
 
         # iterate through dropdown items to select journey quota
         dropdown_items = self.driver.find_elements_by_tag_name("p-dropdownitem")
         for i, e in enumerate(dropdown_items):
             if journey_quota.upper() in e.text:
                 self.common.close_chatbox()
-                e.click()
+                self.common.click(e)
     
     def select_checkboxes(self, options={}, sleep=0.1):        
         default_options = {
@@ -129,24 +133,25 @@ class BookingPage:
                 if not checkbox.is_selected():
                     # select if not already selected
                     self.common.close_chatbox()
-                    e.click()
+                    self.common.click(e)
             else:
                 # if we dont't want to select this option
                 if checkbox.is_selected():
                     # dis-select if already selected
                     self.common.close_chatbox()
-                    e.click()
+                    self.common.click(e)
             
             # if we selected any option
             if default_options.get(opt) == True:
                 # then wait for confirmation box to appear
-                time.sleep(sleep)
+                self.common.sleep(sleep)
             
             try:
                 # bypass the confirmation box, if appear
                 if self.driver.find_element_by_class_name("ui-dialog-title"):
                     self.common.close_chatbox()
-                    self.driver.find_element_by_class_name("ui-button-text").click()
+                    e = self.driver.find_element_by_class_name("ui-button-text")
+                    self.common.click(e)
             except NoSuchElementException: pass
     
     @property
@@ -157,10 +162,15 @@ class BookingPage:
         except NoSuchElementException:
             return ''
     
-    def click_search(self):
+    def click_search(self, sleep=3):
         # press search train button
         self.common.close_chatbox()
-        self.driver.find_element_by_tag_name("button").click()
+        e = self.driver.find_element_by_tag_name("button")
+        self.common.click(e)
+        
+        # wait till train list page is loaded
+        while not self.train_list_page_visible:
+            self.common.sleep(0.1)
     
     @property
     def train_list_page_visible(self):
@@ -169,8 +179,9 @@ class BookingPage:
     def go_back(self):
         if self.train_list_page_visible:
             self.common.close_chatbox()
-            self.driver.find_element_by_class_name("fa-long-arrow-left").click()
+            e = self.driver.find_element_by_class_name("fa-long-arrow-left")
+            self.common.click(e)
     
     def wait_until_loaded(self, sleep=0.03):
         while self.loading:
-            time.sleep(sleep)
+            self.common.sleep(sleep)
