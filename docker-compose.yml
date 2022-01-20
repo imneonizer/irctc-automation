@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+  ocr:
+      build:
+        context: ./ocr
+      container_name: irctc_ocr
+      ports:
+        - 8210:5000
+      volumes:
+        - ./ocr:/app
+
+  api:
+      build:
+        context: ./api
+      container_name: irctc_api
+      ports:
+        - 5000:5000
+        - 8888:8888
+      volumes:
+        - ./api:/app
+        - ./logs:/app/logs
+        - '/tmp/.X11-unix/:/tmp/.X11-unix'
+      environment:
+        - FLASK_ENVIRONMENT=prod
+        - OCR_API=http://ocr:5000/captcha-solver
+        - DISPLAY=$DISPLAY
+        - POSTGRES_HOST=db
+      # env_file:
+      #   - ./.env
+      # depends_on:
+      #   - db
+
+  # ui:
+  #     build:
+  #       context: ./ui
+  #     volumes:
+  #       - ./ui:/app
+  #     ports:
+  #       - 3000:3000
+  #     env_file:
+  #       - ./.env
+
+  # db:
+  #   image: postgres:13-alpine
+  #   ports:
+  #     - 5432:5432
+  #   volumes:
+  #     - ./db:/var/lib/postgresql/data
+  #   env_file:
+  #     - ./.env

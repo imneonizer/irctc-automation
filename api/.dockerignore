@@ -1,0 +1,6 @@
+**/__pycache__
+.ipynb_checkpoints
+logs/
+*.pyc
+*.sqlite3
+chromedriver

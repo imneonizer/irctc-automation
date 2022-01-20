@@ -1,0 +1,5 @@
+Flask==2.0.0
+gunicorn==20.1.0
+numpy==1.19.5
+paddleocr==2.4
+paddlepaddle==2.2.1

@@ -1,0 +1,6 @@
+Pillow==9.0.0
+requests==2.24.0
+selenium==3.141.0
+imchrome==0.2
+jupyter==1.0.0
+notebook==6.4.7
